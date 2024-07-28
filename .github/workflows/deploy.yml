@@ -1,0 +1,107 @@
+name: "Deploy"
+
+on:
+  push:
+    branches:
+      - main
+  # pull_request:
+  #   types: [closed]
+  #   branches:
+  #     - master
+  #     - research-main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-research:
+    # if: github.ref == 'refs/heads/research-main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 14
+
+      - name: Install yarn
+        run: |
+          npm install -g yarn@1.22.19
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v3
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn --frozen-lockfile
+
+      # - name: Config
+      #   run: |
+      #     echo '{}' >> server/config/production.config.json
+
+      - name: Build
+        run: yarn build
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: |
+            build
+            .nuxt
+
+  build-staging:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Checkout"
+        run: |
+          echo The Title of your PR is ${{ github.event.pull_request.title }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 12
+          cache: "npm"
+
+      - uses: actions/cache@v3
+        id: npm-cache
+        with:
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm install
+
+  deploy-research:
+    # if: |
+    #   github.event.pull_request.merged == true &&
+    #   (github.event.pull_request.merged == 'research-main' || github.event.pull_request.merged == 'master')
+    runs-on: ubuntu-latest
+    depends_on: [build-research]
+    steps:
+      - name: List build files
+        run: ls -la build
+
+      # - name: Deploy to staging
+      #   uses: appleboy/scp-action@v0.1.7
+      #   with:
+      #     host: ${{ secrets.STAGING_HOST }}
+      #     username: ${{ secrets.STAGING_USERNAME }}
+      #     key: ${{ secrets.STAGING_PRIVATE_KEY }}
+      #     port: ${{ secrets.STAGING_PORT }}
+      #     source: "build/*"
+      #     target: ${{ secrets.STAGING_DEPLOY_PATH }}
+      #     strip_components: 1
