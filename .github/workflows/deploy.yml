@@ -97,9 +97,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-research
+          path: build-research
 
       - name: List build files
-        run: ls -lah
+        run: ls -lah build-research
 
       # - name: Deploy to staging
       #   uses: appleboy/scp-action@v0.1.7
