@@ -90,7 +90,7 @@ jobs:
     #   github.event.pull_request.merged == true &&
     #   (github.event.pull_request.merged == 'research-main' || github.event.pull_request.merged == 'master')
     runs-on: ubuntu-latest
-    depends_on: [build-research]
+    needs: build-research
     steps:
       - name: List build files
         run: ls -la build
