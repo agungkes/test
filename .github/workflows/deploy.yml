@@ -99,7 +99,7 @@ jobs:
           name: build-research
 
       - name: List build files
-        run: ls -R
+        run: ls build
 
       # - name: Deploy to staging
       #   uses: appleboy/scp-action@v0.1.7
